@@ -1,0 +1,49 @@
+[Unit]
+Description=Nezha API Python Service
+Documentation=https://github.com/your-repo/nezha-api
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=your_username
+Group=your_username
+
+# 工作目录和可执行文件路径
+WorkingDirectory=/path/to/your/api
+ExecStart=/path/to/your/api/venv/bin/python /path/to/your/api/app.py
+ExecReload=/bin/kill -HUP $MAINPID
+
+# 环境变量（可选，如果使用.env文件则不需要）
+# Environment=NEZHA_DASHBOARD_URL=https://your-panel.com
+# Environment=NEZHA_USERNAME=your_username
+# Environment=NEZHA_PASSWORD=your_password
+
+# 重启策略
+Restart=always
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
+
+# 资源限制
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# 安全设置
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/path/to/your/api/logs
+
+# 日志设置
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nezha-api
+
+# 超时设置
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
