@@ -46,17 +46,23 @@ detect_user(){
 
 verify_env(){
   info "verifying environment..."
-  [[ -x "$PYTHON" ]] || { err "python not found: $PYTHON"; exit 1; }
-  [[ -f "${SCRIPT_DIR}/app.py" ]] || { err "app.py not found in ${SCRIPT_DIR}"; exit 1; }
-  # soft dependency checks
-  if ! "$PYTHON" - <<'PY' 2>/dev/null; then
+  if [[ ! -x "$PYTHON" ]]; then
+    err "python not found: $PYTHON"
+    exit 1
+  fi
+  if [[ ! -f "${SCRIPT_DIR}/app.py" ]]; then
+    err "app.py not found in ${SCRIPT_DIR}"
+    exit 1
+  fi
+  # dependency check via heredoc; note redirection order and lack of extra 'then'
+  if ! "$PYTHON" - 2>/dev/null <<'PY'
 import importlib
 for m in ("flask","flask_cors","requests","websocket"):
     importlib.import_module(m)
 PY
-    then
-      err "missing deps. install: ${PIP} install -r ${SCRIPT_DIR}/requirements.txt"
-      exit 1
+  then
+    err "missing deps. install: ${PIP} install -r ${SCRIPT_DIR}/requirements.txt"
+    exit 1
   fi
   info "env ok"
 }
@@ -113,13 +119,14 @@ install_unit(){
   cat "$tmp"
   echo "----------------------------------------"
   if [[ "${1:-}" != "-y" && "${ASSUME_YES:-0}" != "1" ]]; then
-    read -r -p "Proceed to install and start service? [y/N] " ans
+    read -r -p "Proceed to install and start service? [y/N] " ans || true
     [[ "${ans,,}" == "y" ]] || { info "aborted"; rm -f "$tmp"; exit 0; }
   fi
   mv "$tmp" "$UNIT_PATH"
   systemctl daemon-reload
-  # verify syntax
-  systemd-analyze verify "$UNIT_PATH"
+  if command -v systemd-analyze >/dev/null 2>&1; then
+    systemd-analyze verify "$UNIT_PATH" || true
+  fi
   systemctl enable --now "$SERVICE_NAME"
   info "installed and started"
   systemctl --no-pager --full status "$SERVICE_NAME" || true
